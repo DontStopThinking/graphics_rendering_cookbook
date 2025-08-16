@@ -68,12 +68,12 @@ static void InitCB()
 
     sg_pipeline_desc pipeDesc = {};
     pipeDesc.shader = sg_make_shader(shaderDesc);
-    pipeDesc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+    pipeDesc.primitive_type = SG_PRIMITIVETYPE_TRIANGLES;
 
     g_State.m_Pipe = sg_make_pipeline(pipeDesc);
 
     sg_pass_action passAction = {};
-    //passAction.colors[0] = { .load_action = SG_LOADACTION_CLEAR, .clear_value = { 0.0f, 0.0f, 0.0f, 1.0f } };
+    passAction.colors[0] = { .load_action = SG_LOADACTION_CLEAR, .clear_value = { 0.58f, 0.7f, 0.85f, 1.0f } };
 
     g_State.m_PassAction = passAction;
 }
