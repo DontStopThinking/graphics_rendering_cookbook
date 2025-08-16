@@ -84,9 +84,9 @@ static void InitCB()
     fillPipeDesc.depth =
     {
         .compare = SG_COMPAREFUNC_LESS_EQUAL,
+        .write_enabled = true,
     };
-    fillPipeDesc.cull_mode = SG_CULLMODE_FRONT;
-    fillPipeDesc.face_winding = SG_FACEWINDING_CW;
+    fillPipeDesc.cull_mode = SG_CULLMODE_BACK;
 
     sg_pipeline_desc wirePipeDesc = fillPipeDesc;
     wirePipeDesc.depth.bias = -1.0f;
