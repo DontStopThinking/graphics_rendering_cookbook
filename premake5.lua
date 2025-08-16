@@ -43,13 +43,11 @@ project "Extern"
 
     files {
         "extern/sokol/**.h", -- sokol
-        "extern/HandmadeMath/**.h", -- Handmade Math
         "extern/glm/**.hpp", -- glm
     }
 
     usage "PUBLIC"
         includedirs {
-            "extern/HandmadeMath/",
             "extern/sokol/",
             "extern/glm/",
         }
