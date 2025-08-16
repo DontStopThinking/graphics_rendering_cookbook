@@ -44,12 +44,14 @@ project "Extern"
     files {
         "extern/sokol/**.h", -- sokol
         "extern/HandmadeMath/**.h", -- Handmade Math
+        "extern/glm/**.hpp", -- glm
     }
 
     usage "PUBLIC"
         includedirs {
             "extern/HandmadeMath/",
-            "extern/sokol/"
+            "extern/sokol/",
+            "extern/glm/",
         }
 
 
@@ -92,10 +94,6 @@ project "GraphicsCookbook"
     -- Include dirs
     includedirs {
         "code/",
-
-        -- Extern includes
-        -- "extern/sokol/", -- sokol
-        -- "extern/HandmadeMath/", -- Handmade Math
     }
 
     -- Source files
@@ -104,10 +102,6 @@ project "GraphicsCookbook"
         "code/**.cpp",
         "code/**.c",
         "code/**.hlsl",
-
-        -- Extern files
-        -- "extern/sokol/**.h", -- sokol
-        -- "extern/HandmadeMath/**.h", -- Handmade Math
     }
 
     -- Copy all HLSL shader files to the target directory

@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <chrono>
 
-#include <HandmadeMath/HandmadeMath.h>
+#include <glm/ext.hpp>
 
 #define SOKOL_IMPL
 #define SOKOL_D3D11
@@ -18,21 +18,28 @@
 
 struct State
 {
-    sg_pipeline m_Pipe;
+    sg_pipeline m_FillPipe;
+    sg_pipeline m_WirePipe;
     sg_bindings m_Bind;
     sg_pass_action m_PassAction;
 };
 
 static State g_State = {};
 
-struct CBParams
+struct VertexUniforms
 {
-    float m_Time; // Time elapsed since load
-    HMM_Vec2 m_Resolution; // Window size (width, height)
-    HMM_Vec2 m_Mouse; // Mouse coordinates
+    glm::mat4 m_MVP;
+    bool m_IsWireframe;
 };
 
-static CBParams g_CBParams = {};
+struct PixelUniforms
+{
+    float m_Time; // Time elapsed since load
+    glm::vec2 m_Resolution; // Window size (width, height)
+    glm::vec2 m_Mouse; // Mouse coordinates
+};
+
+static PixelUniforms g_PixelUniforms = {};
 
 static const auto START_TIMESTAMP = std::chrono::high_resolution_clock::now();
 
@@ -40,8 +47,7 @@ static void InitCB()
 {
     Arena* arena = ArenaCreate(GB(1));
 
-    g_CBParams.m_Resolution.Width = sapp_widthf();
-    g_CBParams.m_Resolution.Height = sapp_heightf();
+    g_PixelUniforms.m_Resolution = glm::vec2(sapp_widthf(), sapp_heightf());
 
     sg_desc setupDesc = {};
     setupDesc.environment = sglue_environment();
@@ -61,16 +67,34 @@ static void InitCB()
     shaderDesc.fragment_func.d3d11_target = "ps_5_0";
     shaderDesc.uniform_blocks[0] =
     {
-        .stage = SG_SHADERSTAGE_FRAGMENT,
-        .size = sizeof(CBParams),
+        .stage = SG_SHADERSTAGE_VERTEX,
+        .size = sizeof(VertexUniforms),
         .hlsl_register_b_n = 0,
     };
+    shaderDesc.uniform_blocks[1] =
+    {
+        .stage = SG_SHADERSTAGE_FRAGMENT,
+        .size = sizeof(PixelUniforms),
+        .hlsl_register_b_n = 1,
+    };
 
-    sg_pipeline_desc pipeDesc = {};
-    pipeDesc.shader = sg_make_shader(shaderDesc);
-    pipeDesc.primitive_type = SG_PRIMITIVETYPE_TRIANGLES;
+    sg_pipeline_desc fillPipeDesc = {};
+    fillPipeDesc.shader = sg_make_shader(shaderDesc);
+    fillPipeDesc.primitive_type = SG_PRIMITIVETYPE_TRIANGLES;
+    fillPipeDesc.depth =
+    {
+        .compare = SG_COMPAREFUNC_LESS_EQUAL,
+    };
+    fillPipeDesc.cull_mode = SG_CULLMODE_FRONT;
+    fillPipeDesc.face_winding = SG_FACEWINDING_CW;
 
-    g_State.m_Pipe = sg_make_pipeline(pipeDesc);
+    sg_pipeline_desc wirePipeDesc = fillPipeDesc;
+    wirePipeDesc.depth.bias = -1.0f;
+    wirePipeDesc.depth.bias_slope_scale = -1.0f;
+    wirePipeDesc.primitive_type = SG_PRIMITIVETYPE_LINES;
+
+    g_State.m_FillPipe = sg_make_pipeline(fillPipeDesc);
+    g_State.m_WirePipe = sg_make_pipeline(wirePipeDesc);
 
     sg_pass_action passAction = {};
     passAction.colors[0] = { .load_action = SG_LOADACTION_CLEAR, .clear_value = { 0.58f, 0.7f, 0.85f, 1.0f } };
@@ -81,14 +105,36 @@ static void InitCB()
 static void FrameCB()
 {
     sg_begin_pass((sg_pass{ .action = g_State.m_PassAction, .swapchain = sglue_swapchain() }));
-    sg_apply_pipeline(g_State.m_Pipe);
+    sg_apply_pipeline(g_State.m_FillPipe);
     //sg_apply_bindings(g_State.m_Bind);
 
     const auto now = std::chrono::high_resolution_clock::now();
-    g_CBParams.m_Time = std::chrono::duration<float>(now - START_TIMESTAMP).count();
+    g_PixelUniforms.m_Time = std::chrono::duration<float>(now - START_TIMESTAMP).count();
 
-    sg_apply_uniforms(0, sg_range{ .ptr = &g_CBParams, .size = sizeof(g_CBParams) });
-    sg_draw(0, 4, 1);
+    const float ratio = sapp_widthf() / sapp_heightf();
+
+    const glm::mat4 m = glm::rotate(
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f)),
+        g_PixelUniforms.m_Time,
+        glm::vec3(1.0f, 1.0f, 1.0f));
+
+    const glm::mat4 p = glm::perspective(45.0f, ratio, 0.1f, 1000.0f);
+
+    VertexUniforms vertexUniforms = {};
+    vertexUniforms.m_MVP = p * m;
+
+    // 1. Draw filled cube first
+    sg_apply_uniforms(0, sg_range{ .ptr = &vertexUniforms, .size = sizeof(VertexUniforms) });
+    sg_apply_uniforms(1, sg_range{ .ptr = &g_PixelUniforms, .size = sizeof(PixelUniforms) });
+    sg_draw(0, 36, 1);
+
+    // 2. Draw wireframe cube on top
+    vertexUniforms.m_IsWireframe = true;
+    sg_apply_pipeline(g_State.m_WirePipe);
+    sg_apply_uniforms(0, sg_range{ .ptr = &vertexUniforms, .size = sizeof(VertexUniforms) });
+    sg_apply_uniforms(1, sg_range{ .ptr = &g_PixelUniforms, .size = sizeof(PixelUniforms) });
+    sg_draw(0, 36, 1);
+
     sg_end_pass();
     sg_commit();
 }
@@ -109,16 +155,13 @@ static void EventCB(const sapp_event* ev)
     }
     if (ev->type == SAPP_EVENTTYPE_RESIZED)
     {
-        g_CBParams.m_Resolution.Width = sapp_widthf();
-        g_CBParams.m_Resolution.Height = sapp_heightf();
+        g_PixelUniforms.m_Resolution = glm::vec2(sapp_widthf(), sapp_heightf());
     }
     if (ev->type == SAPP_EVENTTYPE_MOUSE_MOVE)
     {
-        HMM_Vec2 normalizedMouse = HMM_DivV2(
-            HMM_Vec2{ ev->mouse_x, ev->mouse_y },
-            g_CBParams.m_Resolution);
+        glm::vec2 normalizedMouse = glm::vec2(ev->mouse_x, ev->mouse_y) / g_PixelUniforms.m_Resolution;
 
-        g_CBParams.m_Mouse = normalizedMouse;
+        g_PixelUniforms.m_Mouse = normalizedMouse;
     }
 }
 
