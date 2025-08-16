@@ -1,0 +1,1 @@
+sokol-master.zip downloaded on August 5th, 2025 from https://github.com/floooh/sokol/archive/refs/heads/master.zip
