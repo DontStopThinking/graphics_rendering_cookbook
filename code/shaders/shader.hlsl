@@ -7,7 +7,7 @@ cbuffer VertexUniforms : register(b0)
 struct VSOutput
 {
     float4 m_Position : SV_Position;
-    //float3 m_Color : COLOR;
+    float3 m_Color : COLOR;
     float2 m_UV : TEXCOORD0;
 };
 
@@ -77,7 +77,8 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
     int idx = g_Indices[vertexID];
 
     result.m_Position = mul(u_MVP, float4(g_Pos[idx], 1.0));
-    result.m_UV = g_UV[idx % 24u];
+    result.m_Color = u_IsWireframe ? float3(0.0, 0.0, 0.0) : PositionToRGB(g_Pos[idx]);
+    result.m_UV = g_UV[idx % 24u] * 5.0;
 
     return result;
 }
@@ -92,33 +93,10 @@ cbuffer PixelUniforms : register(b1)
     float2 u_Mouse; // Mouse coordinates (x, y)
 }
 
-// Embedded 4x4 texture (checkerboard)
-static const uint g_Texture[16] =
-{
-    0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-    0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-    0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-    0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-};
-
-// Fetch color from g_Texture
-float4 SampleEmbeddedTexture(float2 uv)
-{
-    int x = (float)floor(uv.x * 4.0) % 4;
-    int y = (float)floor(uv.y * 4.0) % 4;
-    int idx = y * 4 + x;
-
-    uint texel = g_Texture[idx];
-
-    float a = ((texel >> 24) & 0xFF) / 255.0f;
-    float r = ((texel >> 16) & 0xFF) / 255.0f;
-    float g = ((texel >> 8) & 0xFF) / 255.0f;
-    float b = ((texel >> 0) & 0xFF) / 255.0f;
-
-    return float4(r, g, b, a);
-}
+Texture2D g_Tex : register(t0);
+sampler g_Sampler : register(s0);
 
 float4 PSMain(VSOutput input) : SV_Target
 {
-    return SampleEmbeddedTexture(input.m_UV);
+    return g_Tex.Sample(g_Sampler, input.m_UV) * float4(input.m_Color, 1.0);
 }

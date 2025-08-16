@@ -52,6 +52,30 @@ static void InitCB()
     setupDesc.logger.func = slog_func;
     sg_setup(setupDesc);
 
+    // Create a checkerboard texture
+    constexpr u32 TEXTURE_PIXELS[] =
+    {
+        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+    };
+
+    sg_image_desc imageDesc = {};
+    imageDesc.width = 4;
+    imageDesc.height = 4;
+    imageDesc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    imageDesc.data.subimage[0][0] = SG_RANGE(TEXTURE_PIXELS);
+
+    sg_image img = sg_make_image(imageDesc);
+
+    // Create a sampler
+    sg_sampler sampler = sg_make_sampler(
+    {
+        .min_filter = SG_FILTER_NEAREST,
+        .mag_filter = SG_FILTER_NEAREST,
+    });
+
     const char* const shaderSource = ReadFileAndNullTerminateIt(arena, "shaders/shader.hlsl");
 
     sg_shader_desc shaderDesc = {};
@@ -75,6 +99,29 @@ static void InitCB()
         .size = sizeof(PixelUniforms),
         .hlsl_register_b_n = 1,
     };
+    shaderDesc.images[0] =
+    {
+        .stage = SG_SHADERSTAGE_FRAGMENT,
+        .hlsl_register_t_n = 0,
+    };
+    shaderDesc.samplers[0] =
+    {
+        .stage = SG_SHADERSTAGE_FRAGMENT,
+        .hlsl_register_s_n = 0,
+    };
+    shaderDesc.image_sampler_pairs[0] =
+    {
+        .stage = SG_SHADERSTAGE_FRAGMENT,
+        .image_slot = 0,
+        .sampler_slot = 0,
+    };
+
+    // Resource bindings
+    sg_bindings bind = {};
+    bind.images[0] = img;
+    bind.samplers[0] = sampler;
+
+    g_State.m_Bind = bind;
 
     sg_pipeline_desc fillPipeDesc = {};
     fillPipeDesc.shader = sg_make_shader(shaderDesc);
@@ -95,16 +142,20 @@ static void InitCB()
     g_State.m_WirePipe = sg_make_pipeline(wirePipeDesc);
 
     sg_pass_action passAction = {};
-    passAction.colors[0] = { .load_action = SG_LOADACTION_CLEAR, .clear_value = { 0.58f, 0.7f, 0.85f, 1.0f } };
+    passAction.colors[0] =
+    {
+        .load_action = SG_LOADACTION_CLEAR,
+        .clear_value = { 0.58f, 0.7f, 0.85f, 1.0f } // Cauliflower blue
+    };
 
     g_State.m_PassAction = passAction;
 }
 
 static void FrameCB()
 {
-    sg_begin_pass((sg_pass{ .action = g_State.m_PassAction, .swapchain = sglue_swapchain() }));
+    sg_begin_pass(sg_pass{ .action = g_State.m_PassAction, .swapchain = sglue_swapchain() });
     sg_apply_pipeline(g_State.m_FillPipe);
-    //sg_apply_bindings(g_State.m_Bind);
+    sg_apply_bindings(g_State.m_Bind);
 
     const auto now = std::chrono::high_resolution_clock::now();
     g_PixelUniforms.m_Time = std::chrono::duration<float>(now - START_TIMESTAMP).count();
@@ -114,7 +165,8 @@ static void FrameCB()
     const glm::mat4 m = glm::rotate(
         glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f)),
         g_PixelUniforms.m_Time,
-        glm::vec3(1.0f, 1.0f, 1.0f));
+        glm::vec3(1.0f, 1.0f, 1.0f)
+    );
 
     const glm::mat4 p = glm::perspective(45.0f, ratio, 0.1f, 1000.0f);
 
@@ -129,6 +181,7 @@ static void FrameCB()
     // 2. Draw wireframe cube on top
     vertexUniforms.m_IsWireframe = true;
     sg_apply_pipeline(g_State.m_WirePipe);
+    sg_apply_bindings(g_State.m_Bind);
     sg_apply_uniforms(0, sg_range{ .ptr = &vertexUniforms, .size = sizeof(VertexUniforms) });
     sg_apply_uniforms(1, sg_range{ .ptr = &g_PixelUniforms, .size = sizeof(PixelUniforms) });
     sg_draw(0, 36, 1);
