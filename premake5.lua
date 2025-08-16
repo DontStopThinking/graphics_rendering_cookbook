@@ -2,6 +2,7 @@ workspace "GraphicsCookbook"
     -- project files output location
     location "projects/%{_ACTION}/"
 
+    -- Solution file name
     filename "%{wks.name:lower()}"
 
     -- Unity build
@@ -9,6 +10,9 @@ workspace "GraphicsCookbook"
 
     -- Global defines
     defines { "_CRT_SECURE_NO_WARNINGS" }
+
+    -- Directories
+    objdir "tmp/%{cfg.buildcfg}/%{prj.name:lower()}"
 
     -- Configurations (i.e debug, release, etc.)
     configurations { "debug", "release" }
@@ -35,26 +39,6 @@ workspace "GraphicsCookbook"
     startproject "GraphicsCookbook"
 
 
-project "Extern"
-    kind "None"
-
-    location "%{wks.location}/%{prj.name:lower()}"
-    filename "%{prj.name:lower()}"
-
-    files {
-        "extern/glm/**.hpp", -- glm
-        "extern/sokol/**.h", -- sokol
-        "extern/stb/**.h", -- stb libraries
-    }
-
-    usage "PUBLIC"
-        includedirs {
-            "extern/sokol/",
-            "extern/glm/",
-            "extern/stb/",
-        }
-
-
 project "GraphicsCookbook"
     kind "ConsoleApp"
 
@@ -68,12 +52,15 @@ project "GraphicsCookbook"
     cppdialect "C++20"
     exceptionhandling "Off"
 
+    -- Dependencies
+    dependson { "Extern" }
+
     defines {
         -- "LOG_USE_COLOR" -- Enable coloured output in logs.
     }
 
     -- Linker
-    links {}
+    links { "Extern" }
 
     -- Output name
     targetname "graphics_cookbook"
@@ -84,7 +71,6 @@ project "GraphicsCookbook"
 
     -- Directories
     targetdir "bin/"
-    objdir "tmp/%{cfg.buildcfg}/%{prj.name:lower()}"
     debugdir "%{cfg.targetdir}"
 
     libdirs {}
@@ -119,6 +105,39 @@ project "GraphicsCookbook"
     vpaths {
         ["*"] = "code/", -- Automatically mirror the code folder structure
     }
+
+
+project "Extern"
+    kind "StaticLib"
+    staticruntime "On"
+
+    location "%{wks.location}/%{prj.name:lower()}"
+    filename "%{prj.name:lower()}"
+
+    files {
+        "extern/glm/**.hpp", -- glm
+        "extern/dearimgui/**.h", -- Dear Imgui *.h
+        "extern/dearimgui/**.cpp", -- Dear Imgui *.cpp
+        "extern/sokol/**.h", -- sokol
+        "extern/stb/**.h", -- stb libraries
+    }
+
+    removefiles {
+        "extern/dearimgui/imgui/backends/**", -- Don't need imgui backends since we're using Sokol.
+        "extern/dearimgui/imgui/examples/**", -- Don't need this I think.
+        "extern/dearimgui/imgui/misc/**", -- Getting compilation errors. Do I need these? Bring this back if needed.
+    }
+
+    filter {}
+
+    usage "PUBLIC"
+        includedirs {
+            "extern/sokol/",
+            "extern/glm/",
+            "extern/stb/",
+            "extern/dearimgui/",
+            "extern/dearimgui/imgui/",
+        }
 
 
 -- A project to store non-code repository files. e.g. this Premake script, images, etc.

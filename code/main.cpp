@@ -8,6 +8,8 @@
 #include <sokol/sokol_gfx.h>
 #include <sokol/sokol_glue.h>
 #include <sokol/sokol_log.h>
+#include <imgui/imgui.h>
+#include <sokol/util/sokol_imgui.h>
 
 #include "base/base_types.h"
 #include "base/base_arena.h"
@@ -51,6 +53,13 @@ static void InitCB()
     setupDesc.environment = sglue_environment();
     setupDesc.logger.func = slog_func;
     sg_setup(setupDesc);
+
+    // Setup Sokol Imgui
+    simgui_desc_t imguiDesc = {};
+    imguiDesc.logger.func = slog_func;
+    simgui_setup(&imguiDesc);
+
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Create a checkerboard texture
     constexpr u32 TEXTURE_PIXELS[] =
@@ -153,6 +162,19 @@ static void InitCB()
 
 static void FrameCB()
 {
+    // Start Imgui frame
+    simgui_new_frame(
+    {
+        .width = sapp_width(),
+        .height = sapp_height(),
+        .delta_time = sapp_frame_duration(),
+        .dpi_scale = sapp_dpi_scale(),
+    });
+
+    bool demoWindowOpen = true;
+
+    ImGui::ShowDemoWindow(&demoWindowOpen);
+
     sg_begin_pass(sg_pass{ .action = g_State.m_PassAction, .swapchain = sglue_swapchain() });
     sg_apply_pipeline(g_State.m_FillPipe);
     sg_apply_bindings(g_State.m_Bind);
@@ -186,17 +208,22 @@ static void FrameCB()
     sg_apply_uniforms(1, sg_range{ .ptr = &g_PixelUniforms, .size = sizeof(PixelUniforms) });
     sg_draw(0, 36, 1);
 
+    simgui_render(); // Render Imgui
+
     sg_end_pass();
     sg_commit();
 }
 
 static void CleanupCB()
 {
+    simgui_shutdown(); // Shutdown Imgui
     sg_shutdown();
 }
 
 static void EventCB(const sapp_event* ev)
 {
+    simgui_handle_event(ev); // Handle Imgui input
+
     if (ev->type == SAPP_EVENTTYPE_KEY_DOWN)
     {
         if (ev->key_code == SAPP_KEYCODE_ESCAPE)
@@ -220,8 +247,8 @@ sapp_desc sokol_main(int argc, char* argv[])
 {
     sapp_desc result = {};
 
-    result.width = 640;
-    result.height = 480;
+    result.width = 1280;
+    result.height = 720;
     result.window_title = "Learn Sokol";
     result.high_dpi = true;
     result.icon.sokol_default = true;
