@@ -42,14 +42,16 @@ project "Extern"
     filename "%{prj.name:lower()}"
 
     files {
-        "extern/sokol/**.h", -- sokol
         "extern/glm/**.hpp", -- glm
+        "extern/sokol/**.h", -- sokol
+        "extern/stb/**.h", -- stb libraries
     }
 
     usage "PUBLIC"
         includedirs {
             "extern/sokol/",
             "extern/glm/",
+            "extern/stb/",
         }
 
 

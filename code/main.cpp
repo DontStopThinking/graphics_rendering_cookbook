@@ -1,5 +1,3 @@
-#include <cstdio>
-#include <cstdlib>
 #include <chrono>
 
 #include <glm/ext.hpp>
@@ -11,9 +9,9 @@
 #include <sokol/sokol_glue.h>
 #include <sokol/sokol_log.h>
 
+#include "base/base_types.h"
 #include "base/base_arena.h"
 #include "base/base_file.h"
-#include "base/base_types.h"
 #include "base/base_utils.h"
 
 struct State
@@ -159,7 +157,7 @@ static void EventCB(const sapp_event* ev)
     }
     if (ev->type == SAPP_EVENTTYPE_MOUSE_MOVE)
     {
-        glm::vec2 normalizedMouse = glm::vec2(ev->mouse_x, ev->mouse_y) / g_PixelUniforms.m_Resolution;
+        const glm::vec2 normalizedMouse = glm::vec2(ev->mouse_x, ev->mouse_y) / g_PixelUniforms.m_Resolution;
 
         g_PixelUniforms.m_Mouse = normalizedMouse;
     }
