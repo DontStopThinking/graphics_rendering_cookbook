@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 
 using s8 = std::int8_t;

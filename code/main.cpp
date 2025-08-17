@@ -4,17 +4,16 @@
 
 #define SOKOL_IMPL
 #define SOKOL_D3D11
+#include <imgui/imgui.h>
 #include <sokol/sokol_app.h>
 #include <sokol/sokol_gfx.h>
 #include <sokol/sokol_glue.h>
 #include <sokol/sokol_log.h>
-#include <imgui/imgui.h>
 #include <sokol/util/sokol_imgui.h>
 
-#include "base/base_types.h"
 #include "base/base_arena.h"
 #include "base/base_file.h"
-#include "base/base_utils.h"
+#include "base/base_types.h"
 
 struct State
 {
