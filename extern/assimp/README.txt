@@ -1,0 +1,2 @@
+- assimp-sdk-6.0.2-setup.exe downloaded from https://kimkulling.itch.io/the-asset-importer-lib on August 17th, 2025
+- From the installed files, copied include/ and lib/ directories into extern/assimp/ and copied bin/assimp-vc143-mt.dll into bin/

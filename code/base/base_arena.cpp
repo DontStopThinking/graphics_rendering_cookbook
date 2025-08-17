@@ -1,8 +1,8 @@
 #include "base/base_arena.h"
 
+#include <cassert>
 #include <cstddef>
 #include <cstdlib>
-#include <cassert>
 
 #include "base/base_utils.h"
 
@@ -12,8 +12,9 @@ Arena* ArenaCreate(size_t bytes)
 {
     Arena* result = new Arena;
 
-    // TODO(sbalse): Use the Windows API to allocate memory so we can use virtual memory.
-    result->m_Heap = rcast<u8*>(std::calloc(1, bytes));
+    // TODO(sbalse): Use the Windows API instead of calloc to allocate memory
+    // so we can reserve and commit memory as needed.
+    result->m_Heap = scast<u8*>(std::calloc(1, bytes));
     result->m_UsedSize = 0;
     result->m_Capacity = bytes;
 
@@ -22,7 +23,7 @@ Arena* ArenaCreate(size_t bytes)
 
 void* ArenaPush(Arena* arena, size_t bytes)
 {
-    size_t paddedSize = AlignToNextPow2(bytes, ALIGN);
+    const size_t paddedSize = AlignToNextPow2(bytes, ALIGN);
 
     // TODO(sbalse): Custom assert and log macro
     assert((arena->m_UsedSize + paddedSize) < arena->m_Capacity);

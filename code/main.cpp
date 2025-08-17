@@ -1,3 +1,4 @@
+#include <cassert>
 #include <chrono>
 
 #include <glm/ext.hpp>
@@ -11,6 +12,10 @@
 #include <sokol/sokol_log.h>
 #include <sokol/util/sokol_imgui.h>
 
+#include <assimp/cimport.h>
+#include <assimp/scene.h>
+
+#include "assimp/postprocess.h"
 #include "base/base_arena.h"
 #include "base/base_file.h"
 #include "base/base_types.h"
@@ -46,7 +51,7 @@ static const auto START_TIMESTAMP = std::chrono::high_resolution_clock::now();
 
 static void InitCB()
 {
-    Arena* arena = ArenaCreate(GB(1));
+    Arena* arena = ArenaCreate(MB(256));
 
     g_PixelUniforms.m_Resolution = glm::vec2(sapp_widthf(), sapp_heightf());
 
@@ -61,6 +66,15 @@ static void InitCB()
     simgui_setup(&imguiDesc);
 
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    const aiScene* scene = nullptr;
+    // Load Rubber Duck model
+    if (scene = aiImportFile("data/rubber_duck/scene.gltf", aiProcess_Triangulate);
+        !scene || !scene->HasMeshes())
+    {
+        std::fprintf(stderr, "[ERROR] Unable to load rubber_duck.gltf\n"); // TODO(sbalse): Error log macro
+        assert(false); // TODO(sbalse): Custom assert
+    }
 
     // Create a checkerboard texture
     constexpr u32 TEXTURE_PIXELS[] =

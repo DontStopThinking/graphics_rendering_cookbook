@@ -115,6 +115,9 @@ project "Extern"
     filename "%{prj.name:lower()}"
 
     files {
+        "extern/assimp/include/**.h", -- Assimp *.h
+        "extern/assimp/include/**.hpp", -- Assimp *.hpp
+        "extern/assimp/include/**.inl", -- Assimp *.inl
         "extern/glm/**.hpp", -- glm
         "extern/dearimgui/**.h", -- Dear Imgui *.h
         "extern/dearimgui/**.cpp", -- Dear Imgui *.cpp
@@ -128,15 +131,20 @@ project "Extern"
         "extern/dearimgui/imgui/misc/**", -- Getting compilation errors. Do I need these? Bring this back if needed.
     }
 
-    filter {}
-
     usage "PUBLIC"
         includedirs {
+            "extern/assimp/include/",
             "extern/sokol/",
             "extern/glm/",
             "extern/stb/",
             "extern/dearimgui/",
             "extern/dearimgui/imgui/",
+        }
+        libdirs {
+            "extern/assimp/lib/x64"
+        }
+        links {
+            "assimp-vc143-mt"
         }
 
 
