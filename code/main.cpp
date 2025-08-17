@@ -41,6 +41,8 @@ struct PixelUniforms
 
 static PixelUniforms g_PixelUniforms = {};
 
+static bool g_ShowImgui = false;
+
 static const auto START_TIMESTAMP = std::chrono::high_resolution_clock::now();
 
 static void InitCB()
@@ -162,18 +164,22 @@ static void InitCB()
 
 static void FrameCB()
 {
-    // Start Imgui frame
-    simgui_new_frame(
+    if (g_ShowImgui)
     {
-        .width = sapp_width(),
-        .height = sapp_height(),
-        .delta_time = sapp_frame_duration(),
-        .dpi_scale = sapp_dpi_scale(),
-    });
+        // Start Imgui frame
+        simgui_new_frame(
+        {
+            .width = sapp_width(),
+            .height = sapp_height(),
+            .delta_time = sapp_frame_duration(),
+            .dpi_scale = sapp_dpi_scale(),
+        });
 
-    bool demoWindowOpen = true;
+        bool demoWindowOpen = true;
 
-    ImGui::ShowDemoWindow(&demoWindowOpen);
+        ImGui::SetNextWindowPos(ImVec2(sapp_widthf() / 2.0f, sapp_heightf() / 2.0f), ImGuiCond_FirstUseEver);
+        ImGui::ShowDemoWindow(&demoWindowOpen);
+    }
 
     sg_begin_pass(sg_pass{ .action = g_State.m_PassAction, .swapchain = sglue_swapchain() });
     sg_apply_pipeline(g_State.m_FillPipe);
@@ -208,7 +214,10 @@ static void FrameCB()
     sg_apply_uniforms(1, sg_range{ .ptr = &g_PixelUniforms, .size = sizeof(PixelUniforms) });
     sg_draw(0, 36, 1);
 
-    simgui_render(); // Render Imgui
+    if (g_ShowImgui)
+    {
+        simgui_render(); // Render Imgui
+    }
 
     sg_end_pass();
     sg_commit();
@@ -222,13 +231,25 @@ static void CleanupCB()
 
 static void EventCB(const sapp_event* ev)
 {
-    simgui_handle_event(ev); // Handle Imgui input
+    if (g_ShowImgui)
+    {
+        simgui_handle_event(ev); // Handle Imgui input
+    }
 
     if (ev->type == SAPP_EVENTTYPE_KEY_DOWN)
     {
+        // Escape to exit the application
         if (ev->key_code == SAPP_KEYCODE_ESCAPE)
         {
             sapp_request_quit();
+        }
+        // Shift+F10 to toggle Imgui
+        if (ev->modifiers == SAPP_MODIFIER_SHIFT)
+        {
+            if (ev->key_code == SAPP_KEYCODE_F10)
+            {
+                g_ShowImgui = !g_ShowImgui;
+            }
         }
     }
     if (ev->type == SAPP_EVENTTYPE_RESIZED)
