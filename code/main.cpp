@@ -215,16 +215,16 @@ static void FrameCB()
     vertexUniforms.m_MVP = p * m;
 
     // 1. Draw filled cube first
-    sg_apply_uniforms(0, sg_range{ .ptr = &vertexUniforms, .size = sizeof(VertexUniforms) });
-    sg_apply_uniforms(1, sg_range{ .ptr = &g_PixelUniforms, .size = sizeof(PixelUniforms) });
+    sg_apply_uniforms(0, SG_RANGE(vertexUniforms));
+    sg_apply_uniforms(1, SG_RANGE(g_PixelUniforms));
     sg_draw(0, 36, 1);
 
     // 2. Draw wireframe cube on top
     vertexUniforms.m_IsWireframe = true;
     sg_apply_pipeline(g_State.m_WirePipe);
     sg_apply_bindings(g_State.m_Bind);
-    sg_apply_uniforms(0, sg_range{ .ptr = &vertexUniforms, .size = sizeof(VertexUniforms) });
-    sg_apply_uniforms(1, sg_range{ .ptr = &g_PixelUniforms, .size = sizeof(PixelUniforms) });
+    sg_apply_uniforms(0, SG_RANGE(vertexUniforms));
+    sg_apply_uniforms(1, SG_RANGE(g_PixelUniforms));
     sg_draw(0, 36, 1);
 
     if (g_ShowImgui)
