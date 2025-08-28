@@ -2,6 +2,12 @@
 
 Playing around with some simple rendering stuff. Work in progress.
 
+## Controls
+
+| Control     | Explanation  |
+|-------------|--------------|
+| Shift + F10 | Toggle ImGui |
+
 ## Dependencies
 - [Assimp](https://github.com/assimp/assimp)
 - [Dear ImGui](https://github.com/ocornut/imgui)
