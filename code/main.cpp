@@ -1,5 +1,6 @@
 #include <cassert>
 #include <chrono>
+#include <vector>
 
 #include <glm/ext.hpp>
 
@@ -46,12 +47,13 @@ struct PixelUniforms
 static PixelUniforms g_PixelUniforms = {};
 
 static bool g_ShowImgui = false;
+static int g_NumVerticesToRender = 0;
 
 static const auto START_TIMESTAMP = std::chrono::high_resolution_clock::now();
 
 static void InitCB()
 {
-    Arena* arena = ArenaCreate(MB(256));
+    Arena* arena = ArenaCreate(MB(512));
 
     g_PixelUniforms.m_Resolution = glm::vec2(sapp_widthf(), sapp_heightf());
 
@@ -67,14 +69,47 @@ static void InitCB()
 
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    const aiScene* scene = nullptr;
     // Load Rubber Duck model
+    const aiScene* scene = nullptr;
     if (scene = aiImportFile("data/rubber_duck/scene.gltf", aiProcess_Triangulate);
         !scene || !scene->HasMeshes())
     {
         std::fprintf(stderr, "[ERROR] Unable to load rubber_duck.gltf\n"); // TODO(sbalse): Error log macro
         assert(false); // TODO(sbalse): Custom assert
     }
+
+    const aiMesh* mesh = scene->mMeshes[0];
+
+    // Create an array of vertices
+    Range<glm::vec3> positions = PushArray<glm::vec3>(arena, mesh->mNumFaces * 3);
+
+    for (u32 i = 0; i != mesh->mNumFaces; i++)
+    {
+        const aiFace& face = mesh->mFaces[i];
+
+        const u32 idx[3] = { face.mIndices[0], face.mIndices[1], face.mIndices[2] };
+        for (int j = 0; j != 3; j++)
+        {
+            const aiVector3D& v = mesh->mVertices[idx[j]];
+            positions.m_Data[i * 3 + j] = glm::vec3(v.x, v.z, v.y);
+        }
+    }
+
+    aiReleaseImport(scene); // Release the scene
+
+    // Create a vertex buffer for the model
+    sg_buffer_desc vbDesc = {};
+    vbDesc.data = sg_range{ .ptr = positions.m_Data, .size = positions.m_Count * sizeof(glm::vec3) };
+    vbDesc.usage = sg_buffer_usage{ .vertex_buffer = true };
+    vbDesc.label = "Vertex Buffer";
+
+    sg_buffer vertexBuffer = sg_make_buffer(vbDesc);
+
+    sg_vertex_layout_state vertexLayout = {};
+    vertexLayout.buffers[0].stride = sizeof(glm::vec3);
+    vertexLayout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
+
+    g_NumVerticesToRender = scast<int>(positions.m_Count);
 
     // Create a checkerboard texture
     constexpr u32 TEXTURE_PIXELS[] =
@@ -111,6 +146,10 @@ static void InitCB()
     shaderDesc.fragment_func.d3d11_filepath = "shaders/shader.hlsl";
     shaderDesc.fragment_func.entry = "PSMain";
     shaderDesc.fragment_func.d3d11_target = "ps_5_0";
+    shaderDesc.attrs[0] =
+    {
+        .hlsl_sem_name = "POSITION",
+    };
     shaderDesc.uniform_blocks[0] =
     {
         .stage = SG_SHADERSTAGE_VERTEX,
@@ -142,6 +181,7 @@ static void InitCB()
 
     // Resource bindings
     sg_bindings bind = {};
+    bind.vertex_buffers[0] = vertexBuffer;
     bind.images[0] = img;
     bind.samplers[0] = sampler;
 
@@ -156,6 +196,7 @@ static void InitCB()
         .write_enabled = true,
     };
     fillPipeDesc.cull_mode = SG_CULLMODE_BACK;
+    fillPipeDesc.layout = vertexLayout;
 
     sg_pipeline_desc wirePipeDesc = fillPipeDesc;
     wirePipeDesc.depth.bias = -1.0f;
@@ -203,11 +244,13 @@ static void FrameCB()
 
     const float ratio = sapp_widthf() / sapp_heightf();
 
-    const glm::mat4 m = glm::rotate(
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f)),
+    glm::mat4 m = glm::rotate(
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -3.5f)),
         g_PixelUniforms.m_Time,
-        glm::vec3(1.0f, 1.0f, 1.0f)
+        glm::vec3(0.0f, 1.0f, 0.0f)
     );
+
+    m = glm::scale(m, glm::vec3(2.0f));
 
     const glm::mat4 p = glm::perspective(45.0f, ratio, 0.1f, 1000.0f);
 
@@ -217,7 +260,7 @@ static void FrameCB()
     // 1. Draw filled cube first
     sg_apply_uniforms(0, SG_RANGE(vertexUniforms));
     sg_apply_uniforms(1, SG_RANGE(g_PixelUniforms));
-    sg_draw(0, 36, 1);
+    sg_draw(0, g_NumVerticesToRender, 1);
 
     // 2. Draw wireframe cube on top
     vertexUniforms.m_IsWireframe = true;
@@ -225,7 +268,7 @@ static void FrameCB()
     sg_apply_bindings(g_State.m_Bind);
     sg_apply_uniforms(0, SG_RANGE(vertexUniforms));
     sg_apply_uniforms(1, SG_RANGE(g_PixelUniforms));
-    sg_draw(0, 36, 1);
+    sg_draw(0, g_NumVerticesToRender, 1);
 
     if (g_ShowImgui)
     {
