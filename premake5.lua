@@ -158,4 +158,5 @@ project "Other"
     files {
         "premake5.lua",
         ".gitignore",
+        "README.md",
     }
